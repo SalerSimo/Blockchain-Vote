@@ -63,7 +63,6 @@ Block *CreateGenesisBlock(){
     strcpy(genesis->votes[0].candidateVoted, "Genesis block");
     strcpy(genesis->votes[0].voterId, NONE);
     genesis->numVotes = 1;
-    //strcpy(genesis->data, "Genesis block");
     strcpy(genesis->prevHash, NONE);
     genesis->nonce = 0;
     MineBlock(genesis);
@@ -104,7 +103,6 @@ Block *CreateBlock(Blockchain *blockchain, Vote *voteArray, int numVotes){
     strcpy(newBlock->prevHash, blockchain->tail->hash);
     newBlock->nonce = 0;
     MineBlock(newBlock);
-    //AddBlock(blockchain, newBlock);
     return newBlock;
 }
 
@@ -116,14 +114,8 @@ void CreateAndAddBlock(Blockchain *blockchain, Vote *voteArray, int numVotes){
 void PrintBlock(Block *block){
     printf("Index: \t\t %d\n", block->index);
     printf("Timestamp: \t %ld\n\n", block->timestamp);
-    /*printf("\nVote 0\n");
-    printf("Voter ID: \t %s\n", block->votes[0].voterId);
-    if(strcmp(block->votes[0].voterId, "Genesis block") != 0)
-        printf("Candidate voted: %s\n",block->votes[0].candidateVoted);*/
     for(int i=0; i<block->numVotes; i++){
         printf("Vote %d:\t\t %s\n", i, block->votes[i].candidateVoted);
-        /*printf("Voter ID: \t %s\n", block->votes[i].voterId);
-        printf("Candidate voted: %s\n",block->votes[i].candidateVoted);*/
     }
     printf("\nHash: \t\t %s\n", block->hash);
     printf("Previous hash: \t %s\n", block->prevHash);
@@ -166,7 +158,6 @@ int CheckBlock(Block *block, Blockchain *blockchain){
     if(strcmp(block->hash, CalculateHash(block)) != 0)
         return 0;
     for(int i=0; i<block->numVotes; i++){
-        //printf("checking vote %d\n", i);
         while(blockchainBlock != blockchain->end){
             for(int j=0; j<blockchainBlock->numVotes; j++){
                 if(strcmp(block->votes[i].voterId, blockchainBlock->votes[j].voterId) == 0){

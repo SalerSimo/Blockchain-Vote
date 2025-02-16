@@ -57,7 +57,6 @@ void UpdatePeers(Peers *peerList, SOCKET centralSocket){
     send(centralSocket, &ack, 1, 0);
 
     peerList->peerCount++;
-    //printPeers(peerList);
 }
 
 int SendBlockBroadcast(Block *block, Peers *peerList){
@@ -487,8 +486,6 @@ int main(int argc, char **argv){
     data.socket = peerSocket;
     getsockname(peerSocket, (struct sockaddr *)&peerAddr, &addrLength);
     port = ntohs(peerAddr.sin_port);
-
-    //printf("Peer listening port is %d\n", port);
 
     GenerateRsaKeys(&privateKey, &publicKey);
 
