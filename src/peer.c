@@ -2,10 +2,45 @@
 #include<string.h>
 #include<pthread.h>
 #include<unistd.h>
-#include<winsock2.h>
 #include<pthread.h>
 #include<semaphore.h>
 #include"blockchain.h"
+
+#ifdef _WIN32
+    #include <winsock2.h>
+#else
+    #include <sys/types.h>
+    #include <sys/socket.h>
+    #include <netinet/in.h>
+    #include <arpa/inet.h>
+    #define SOCKET int
+    #define INVALID_SOCKET -1
+    #define SOCKET_ERROR -1
+#endif
+
+void InitializeSockets() {
+#ifdef _WIN32
+    WSADATA wsa;
+    if (WSAStartup(MAKEWORD(2,2), &wsa) != 0) {
+        printf("WSAStartup failed\n");
+        exit(1);
+    }
+#endif
+}
+
+void CleanupSockets() {
+#ifdef _WIN32
+    WSACleanup();
+#endif
+}
+
+void CloseSocket(SOCKET socket){
+#ifdef _WIN32
+    closesocket(socket);
+#else
+    close(socket);
+#endif
+}
 
 typedef struct{
     char peerIp[MAX_PEERS][16];
@@ -84,7 +119,7 @@ int SendBlockBroadcast(Block *block, Peers *peerList){
             return 0;
         }
 
-        closesocket(peerSocket);
+        CloseSocket(peerSocket);
     }
     return 1;
 }
@@ -141,7 +176,7 @@ void ReceiveBlock(SOCKET senderSocket, Blockchain *blockchain, Peers *peerList){
         send(senderSocket, "0", 1, 0);
     }
 
-    closesocket(senderSocket);
+    CloseSocket(senderSocket);
 }
 
 void SendBlockchain(SOCKET socket, Blockchain *blockchain, Peers *peerList){
@@ -159,7 +194,7 @@ void SendBlockchain(SOCKET socket, Blockchain *blockchain, Peers *peerList){
         block = block->next;
     }
     shutdown(socket, SD_SEND);
-    closesocket(socket);
+    CloseSocket(socket);
 }
 
 void ReceiveBlockchain(Peers *peerList, Blockchain *blockchain){
@@ -218,7 +253,7 @@ void ReceiveBlockchain(Peers *peerList, Blockchain *blockchain){
 
         AddBlock(blockchain, block);
     }
-    closesocket(peerSocket);
+    CloseSocket(peerSocket);
 }
 
 void *ReceiveMessageThread(void *args){
@@ -259,7 +294,7 @@ void *ReceiveMessageThread(void *args){
             //printf("The other peer has finished mining\n");
             sem_post(&miningMutex);
         }
-        closesocket(senderSocket);
+        CloseSocket(senderSocket);
     }
 }
 
@@ -336,7 +371,7 @@ int MineNewBlock(Vote *voteArray, int numVotes, Blockchain *blockchain, Peers *p
         connect(peerSocket, (struct sockaddr *)&peerAddr, sizeof(peerAddr));
 
         send(peerSocket, "start mining", 12, 0);
-        closesocket(peerSocket);
+        CloseSocket(peerSocket);
     }
 
     sem_wait(&miningMutex);
@@ -369,7 +404,7 @@ int MineNewBlock(Vote *voteArray, int numVotes, Blockchain *blockchain, Peers *p
         connect(peerSocket, (struct sockaddr *)&peerAddr, sizeof(peerAddr));
 
         send(peerSocket, "end mining", 10, 0);
-        closesocket(peerSocket);
+        CloseSocket(peerSocket);
     }
     sem_post(&peerMutex);
     return 1;
@@ -462,7 +497,7 @@ void PrintCommands(){
 }
 
 int main(int argc, char **argv){
-    WSADATA wsa;
+    //WSADATA wsa;
     SOCKET peerSocket, centralSocket;
     struct sockaddr_in peerAddr, centralAddr;
     int addrLength = sizeof(peerAddr), port;
@@ -476,7 +511,8 @@ int main(int argc, char **argv){
 
     data.peerList = peerList;
 
-    WSAStartup(MAKEWORD(2,2), &wsa);
+    //WSAStartup(MAKEWORD(2,2), &wsa);
+    InitializeSockets();
 
     peerSocket = socket(AF_INET, SOCK_STREAM, 0);
     peerAddr.sin_family = AF_INET;
@@ -518,7 +554,7 @@ int main(int argc, char **argv){
     pthread_join(tid[0], NULL);
     pthread_join(tid[1], NULL);
 
-    closesocket(peerSocket);
-    WSACleanup();
+    CloseSocket(peerSocket);
+    CleanupSockets();
     return 0;
 }

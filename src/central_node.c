@@ -1,8 +1,44 @@
 #include <stdio.h>
 #include<string.h>
 #include<pthread.h>
-#include<winsock2.h>
 #include"blockchain.h"
+
+#ifdef _WIN32
+    #include <winsock2.h>
+#else
+    #include <sys/types.h>
+    #include <sys/socket.h>
+    #include <netinet/in.h>
+    #include <arpa/inet.h>
+    #include<unistd.h>
+    #define SOCKET int
+    #define INVALID_SOCKET -1
+    #define SOCKET_ERROR -1
+#endif
+
+void InitializeSockets() {
+#ifdef _WIN32
+    WSADATA wsa;
+    if (WSAStartup(MAKEWORD(2,2), &wsa) != 0) {
+        printf("WSAStartup failed\n");
+        exit(1);
+    }
+#endif
+}
+
+void CleanupSockets() {
+#ifdef _WIN32
+    WSACleanup();
+#endif
+}
+
+void CloseSocket(SOCKET socket){
+#ifdef _WIN32
+    closesocket(socket);
+#else
+    close(socket);
+#endif
+}
 
 typedef struct{
     char peerIp[MAX_PEERS][16];
@@ -87,7 +123,7 @@ void printPeers(Peers *peerList){
 }
 
 int main(){
-    WSADATA wsa;
+    //WSADATA wsa;
     SOCKET clientSocket, serverSocket;
     struct sockaddr_in serverAddr, clientAddr;
     int addrLength = sizeof(clientAddr);
@@ -95,7 +131,8 @@ int main(){
     char peerIp[16], ack = 'x', key[MAX_PUBLIC_KEY_LENGTH];
     Peers *peerList = Peers_init();
     
-    WSAStartup(MAKEWORD(2,2), &wsa);
+    //WSAStartup(MAKEWORD(2,2), &wsa);
+    InitializeSockets();
     serverSocket = socket(AF_INET, SOCK_STREAM, 0);
 
     serverAddr.sin_family = AF_INET;
@@ -124,10 +161,10 @@ int main(){
             send(clientSocket, &ack, 1, 0);
         }
 
-        closesocket(clientSocket);
+        CloseSocket(clientSocket);
     }
     printf("end\n");
-    closesocket(serverSocket);
-    WSACleanup();
+    CloseSocket(serverSocket);
+    CleanupSockets();
     return 0;
 }
